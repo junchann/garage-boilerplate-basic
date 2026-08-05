@@ -56,6 +56,23 @@ service cloud.firestore {
       allow delete: if false; // soft-delete only — set deletedAt field instead
     }
 
+    // notes/{noteId}
+    // A note belongs to whoever created it — nobody else can read or touch it.
+    match /notes/{noteId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.uid) && notDeleted();
+
+      allow create: if isAuthenticated() && isOwner(request.resource.data.uid)
+        && request.resource.data.keys().hasAll(['uid', 'title', 'body', 'createdAt', 'updatedAt', '_schemaVersion'])
+        && request.resource.data.keys().hasOnly(['uid', 'title', 'body', 'createdAt', 'updatedAt', '_schemaVersion', 'deletedAt'])
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200;
+
+      allow update: if isAuthenticated() && isOwner(resource.data.uid)
+        && request.resource.data.uid == resource.data.uid; // can't hand a note to someone else
+
+      allow delete: if false; // soft-delete only — set deletedAt field instead
+    }
+
     // Add new collection rules above this comment using the /firebase-collection skill.
 
     // ── Default deny ───────────────────────────────────────────────────────
