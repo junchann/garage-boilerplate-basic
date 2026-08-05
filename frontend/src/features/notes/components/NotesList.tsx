@@ -1,6 +1,6 @@
 'use client'
 
-import { orderBy, where } from 'firebase/firestore'
+import { where } from 'firebase/firestore'
 import { useAuth } from '@/hooks/useAuth'
 import { useCollection } from '@/hooks/useFirestore'
 import { getNotesCollection } from '@/lib/firebase/firestore'
@@ -13,8 +13,7 @@ export function NotesList() {
   // onSnapshot subscription, so a new note shows up without a refresh
   const { data: notes, loading } = useCollection(
     getNotesCollection(),
-    where('uid', '==', user?.uid ?? ''),
-    orderBy('createdAt', 'desc')
+    where('uid', '==', user?.uid ?? '')
   )
 
   if (loading) return <LoadingSpinner />
@@ -22,9 +21,15 @@ export function NotesList() {
     return <EmptyState title="No notes yet" description="Add your first note above." />
   }
 
+  // sorting here instead of in the query — a where + orderBy combo needs a
+  // composite index, and this list is small enough that it doesn't matter
+  const newestFirst = [...notes].sort(
+    (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()
+  )
+
   return (
     <ul className="space-y-2">
-      {notes.map((note) => (
+      {newestFirst.map((note) => (
         <li
           key={note.id}
           className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
